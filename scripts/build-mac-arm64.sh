@@ -65,6 +65,11 @@ install_name_tool -id @rpath/libsane.1.dylib backend/.libs/libsane.1.dylib
 popd
 fi
 
+# hplip includes libusb headers as <libusb-1.0/libusb.h> and <libusb/libusb.h>;
+# the in-tree libusb checkout has neither layout, so fake both with symlinks.
+ln -sfn libusb "$SOURCES_DIR/libusb/libusb-1.0"
+ln -sfn . "$SOURCES_DIR/libusb/libusb/libusb"
+
 pushd "$SOURCES_DIR/hplip"
 if true; then
 distclean_tree config.h stamp-h1
