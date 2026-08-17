@@ -40,6 +40,14 @@ jobs:
       - name: Apply source patches
         run: ./scripts/apply-patches.sh
 
+      # sane-backends derives its version from 'git describe' (git-version-gen)
+      # at autoreconf time; the shallow submodule clone has no tags, which
+      # turns SANE_DLL_V_MAJOR into the literal UNKNOWN.
+      - name: Fetch sane-backends tags
+        run: |
+          git -C sources/sane-backends fetch --tags --unshallow origin \
+            || git -C sources/sane-backends fetch --tags origin
+
       - name: Build
         run: ./scripts/build-mac-${{ matrix.arch }}.sh
 
