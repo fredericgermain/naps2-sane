@@ -9,4 +9,4 @@
 	url = https://github.com/libjpeg-turbo/libjpeg-turbo.git
 [submodule "sources/hplip"]
 	path = sources/hplip
-	url = https://github.com/fredericgermain/hplip.git
+	url = https://github.com/cyanfish/naps2-hplip.git

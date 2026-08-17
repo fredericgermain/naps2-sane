@@ -9,6 +9,8 @@ ARTIFACTS_DIR="$BASE_DIR/artifacts"
 
 TARGET_DIR="$ARTIFACTS_DIR/mac-arm64"
 
+JOBS="$( nproc 2>/dev/null || sysctl -n hw.ncpu )"
+
 # Drop everything configure/autoreconf generated, before regenerating it.
 # 'make clean' is not enough: it keeps config.status, the config.h it produced
 # and the stamp-hN files that make uses to decide the header is up to date. A
@@ -32,7 +34,7 @@ pushd "$SOURCES_DIR/libusb"
 distclean_tree config.h stamp-h1
 ./autogen.sh
 CXXFLAGS="-mmacosx-version-min=11.0" CFLAGS="-mmacosx-version-min=11.0" ./configure
-make -j$(nproc)
+make -j$JOBS
 install_name_tool -id @rpath/libusb-1.0.0.dylib libusb/.libs/libusb-1.0.0.dylib
 popd
 fi
@@ -42,8 +44,10 @@ pushd "$SOURCES_DIR/libjpeg-turbo"
 rm -rf build
 mkdir build
 pushd "build"
-cmake .. -G"Unix Makefiles" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
-cmake --build . --parallel $(nproc)
+# CMAKE_POLICY_VERSION_MINIMUM: libjpeg-turbo's cmake_minimum_required(2.8.12)
+# is rejected outright by CMake >= 4.
+cmake .. -G"Unix Makefiles" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake --build . --parallel $JOBS
 popd
 popd
 fi
@@ -56,7 +60,7 @@ LDFLAGS="-L$( realpath "../libjpeg-turbo/build"; ) -L$( realpath "../libusb/libu
 CPPFLAGS="-I$( realpath "../libjpeg-turbo"; ) -I$( realpath "../libjpeg-turbo/build"; ) -I$( realpath "../libusb/libusb"; )" \
 CXXFLAGS="-mmacosx-version-min=11.0" CFLAGS="-mmacosx-version-min=11.0" \
 ./configure
-make -j$(nproc)
+make -j$JOBS
 install_name_tool -id @rpath/libsane.1.dylib backend/.libs/libsane.1.dylib
 popd
 fi
@@ -69,7 +73,7 @@ LDFLAGS="-L$( realpath "../libjpeg-turbo/build"; ) -L$( realpath "../libusb/libu
 CPPFLAGS="-I$( realpath "../libjpeg-turbo"; ) -I$( realpath "../libjpeg-turbo/build"; ) -I$( realpath "../libusb/libusb"; ) -I$( realpath "../libusb"; ) -Wno-implicit-function-declaration" \
 CXXFLAGS="-mmacosx-version-min=11.0" CFLAGS="-mmacosx-version-min=11.0" \
 ./configure --enable-lite-build --disable-hpcups-install --disable-hpps-install --disable-hppgsz-build --disable-gui-build --disable-fax-build --disable-cups-drv-install --disable-dbus-build --with-macos-app-modelsdir=_data/hplip
-make -j$(nproc)
+make -j$JOBS
 install_name_tool -id @rpath/libhpmud.0.dylib .libs/libhpmud.0.dylib
 install_name_tool -id @rpath/libhpip.0.dylib .libs/libhpip.0.dylib
 install_name_tool -id @rpath/libhpdiscovery.0.dylib .libs/libhpdiscovery.0.dylib

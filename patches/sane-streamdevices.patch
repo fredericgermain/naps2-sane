@@ -1,8 +1,8 @@
 diff --git a/backend/dll.c b/backend/dll.c
-index bf34c4f6d..3cd4e53f0 100644
+index d2696c804..c1a645033 100644
 --- a/backend/dll.c
 +++ b/backend/dll.c
-@@ -1169,6 +1169,96 @@ sane_get_devices (const SANE_Device *** device_list, SANE_Bool local_only)
+@@ -1260,6 +1260,96 @@ sane_get_devices (const SANE_Device *** device_list, SANE_Bool local_only)
    return SANE_STATUS_GOOD;
  }
  
