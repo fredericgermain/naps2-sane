@@ -25,5 +25,4 @@ apply_patch() {
   fi
 }
 
-apply_patch libusb libusb-macfix.patch
 apply_patch sane-backends sane-streamdevices.patch
