@@ -65,6 +65,10 @@ install_name_tool -id @rpath/libsane.1.dylib backend/.libs/libsane.1.dylib
 popd
 fi
 
+# -std=gnu17: hpaio.c calls the orblite_* functions without prototypes, which
+# C23 (picked by newer autoconf's AC_PROG_CC) makes a hard error instead of a
+# -Wno-implicit-function-declaration-suppressible warning.
+#
 # hplip includes libusb headers as <libusb-1.0/libusb.h> and <libusb/libusb.h>;
 # the in-tree libusb checkout has neither layout, so fake both with symlinks.
 ln -sfn libusb "$SOURCES_DIR/libusb/libusb-1.0"
@@ -76,7 +80,7 @@ distclean_tree config.h stamp-h1
 [ -f ./configure ] || { glibtoolize && aclocal && autoupdate && autoconf && automake --add-missing; }
 LDFLAGS="-L$( realpath "../libjpeg-turbo/build"; ) -L$( realpath "../libusb/libusb/.libs"; ) -L$( realpath "../sane-backends/backend/.libs"; )" \
 CPPFLAGS="-I$( realpath "../libjpeg-turbo"; ) -I$( realpath "../libjpeg-turbo/build"; ) -I$( realpath "../libusb/libusb"; ) -I$( realpath "../libusb"; ) -Wno-implicit-function-declaration" \
-CXXFLAGS="-mmacosx-version-min=11.0" CFLAGS="-mmacosx-version-min=11.0" \
+CXXFLAGS="-mmacosx-version-min=11.0" CFLAGS="-mmacosx-version-min=11.0 -std=gnu17" \
 ./configure --enable-lite-build --disable-hpcups-install --disable-hpps-install --disable-hppgsz-build --disable-gui-build --disable-fax-build --disable-cups-drv-install --disable-dbus-build --with-macos-app-modelsdir=_data/hplip
 make -j$JOBS
 install_name_tool -id @rpath/libhpmud.0.dylib .libs/libhpmud.0.dylib
