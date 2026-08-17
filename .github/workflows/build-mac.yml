@@ -110,8 +110,12 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
+      # Explicit build first: with GeneratePackageOnBuild=true, 'dotnet pack'
+      # alone can skip the build phase and fail with NU5026 on a clean tree.
       - name: Pack
-        run: dotnet pack NAPS2.Sane.Binaries -c Release
+        run: |
+          dotnet build NAPS2.Sane.Binaries -c Release
+          dotnet pack NAPS2.Sane.Binaries -c Release
 
       - name: Check package
         run: |
