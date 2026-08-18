@@ -45,7 +45,7 @@ popd
 pushd "$SOURCES_DIR/sane-backends"
 ./autogen.sh
 LDFLAGS="-L$( realpath "../libjpeg-turbo/build"; ) -L$( realpath "../libusb/libusb/.libs"; )" \
-CPPFLAGS="-I$( realpath "../libjpeg-turbo"; ) -I$( realpath "../libjpeg-turbo/build"; ) -I$( realpath "../libusb/libusb"; )" \
+CPPFLAGS="-I$( realpath "../libjpeg-turbo/src"; ) -I$( realpath "../libjpeg-turbo/build"; ) -I$( realpath "../libusb/libusb"; )" \
 CXXFLAGS="-mmacosx-version-min=10.15 -arch x86_64" CFLAGS="-mmacosx-version-min=10.15 -arch x86_64" \
 ./configure
 make clean
@@ -65,7 +65,7 @@ pushd "$SOURCES_DIR/hplip"
 distclean_tree config.h stamp-h1
 [ -f ./configure ] || { glibtoolize && aclocal && autoupdate && autoconf && automake --add-missing; }
 LDFLAGS="-L$( realpath "../libjpeg-turbo/build"; ) -L$( realpath "../libusb/libusb/.libs"; ) -L$( realpath "../sane-backends/backend/.libs"; )" \
-CPPFLAGS="-I$( realpath "../libjpeg-turbo"; ) -I$( realpath "../libjpeg-turbo/build"; ) -I$( realpath "../libusb/libusb"; ) -I$( realpath "../libusb"; ) -Wno-implicit-function-declaration" \
+CPPFLAGS="-I$( realpath "../libjpeg-turbo/src"; ) -I$( realpath "../libjpeg-turbo/build"; ) -I$( realpath "../libusb/libusb"; ) -I$( realpath "../libusb"; ) -Wno-implicit-function-declaration" \
 CXXFLAGS="-mmacosx-version-min=10.15 -arch x86_64" CFLAGS="-mmacosx-version-min=10.15 -arch x86_64 -std=gnu17" \
 ./configure --enable-lite-build --disable-hpcups-install --disable-hpps-install --disable-hppgsz-build --disable-gui-build --disable-fax-build --disable-cups-drv-install --disable-dbus-build --with-macos-app-modelsdir=_data/hplip
 make -j$JOBS
