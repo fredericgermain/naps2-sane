@@ -25,32 +25,48 @@ distclean_tree() {
   rm -f "$@"
 }
 
+PROCESS_LIBUSB=1
+PROCESS_LIBJPEG=1
+PROCESS_SANE=1
+PROCESS_HPLIP=1
+
+if [ $PROCESS_LIBUSB -eq 1 ]; then
 pushd "$SOURCES_DIR/libusb"
+distclean_tree config.h stamp-h1
 ./autogen.sh
 CXXFLAGS="-mmacosx-version-min=10.15 -arch x86_64" CFLAGS="-mmacosx-version-min=10.15 -arch x86_64" ./configure
-make clean
-make
+make -j$JOBS
+install_name_tool -id @rpath/libusb-1.0.0.dylib libusb/.libs/libusb-1.0.0.dylib
 popd
+fi
 
+if [ $PROCESS_LIBJPEG -eq 1 ]; then
 pushd "$SOURCES_DIR/libjpeg-turbo"
 rm -rf build
 mkdir build
 pushd "build"
+# CMAKE_POLICY_VERSION_MINIMUM: libjpeg-turbo's cmake_minimum_required(2.8.12)
+# is rejected outright by CMake >= 4.
 cmake .. -G"Unix Makefiles" -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
-    -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_C_FLAGS="-arch x86_64"
-cmake --build .
+    -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_C_FLAGS="-arch x86_64" \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake --build . --parallel $JOBS
 popd
 popd
+fi
 
+if [ $PROCESS_SANE -eq 1 ]; then
 pushd "$SOURCES_DIR/sane-backends"
+distclean_tree include/sane/config.h include/sane/stamp-h1
 ./autogen.sh
 LDFLAGS="-L$( realpath "../libjpeg-turbo/build"; ) -L$( realpath "../libusb/libusb/.libs"; )" \
 CPPFLAGS="-I$( realpath "../libjpeg-turbo/src"; ) -I$( realpath "../libjpeg-turbo/build"; ) -I$( realpath "../libusb/libusb"; )" \
 CXXFLAGS="-mmacosx-version-min=10.15 -arch x86_64" CFLAGS="-mmacosx-version-min=10.15 -arch x86_64" \
 ./configure
-make clean
 make -j$JOBS
+install_name_tool -id @rpath/libsane.1.dylib backend/.libs/libsane.1.dylib
 popd
+fi
 
 # -std=gnu17: hpaio.c calls the orblite_* functions without prototypes, which
 # C23 (picked by newer autoconf's AC_PROG_CC) makes a hard error instead of a
@@ -80,10 +96,15 @@ install_name_tool -change /usr/local/lib/libhpmud.0.dylib @rpath/libhpmud.0.dyli
 install_name_tool -change /usr/local/lib/libhpdiscovery.0.dylib @rpath/libhpdiscovery.0.dylib .libs/libsane-hpaio.1.so
 popd
 
-cp "$SOURCES_DIR/libusb/libusb/.libs/libusb-1.0.0.dylib" "$TARGET_DIR/libusb-1.0.0.dylib"
+if [ $PROCESS_LIBUSB -eq 1 ]; then
+  cp "$SOURCES_DIR/libusb/libusb/.libs/libusb-1.0.0.dylib" "$TARGET_DIR/libusb-1.0.0.dylib"
+fi
 
-cp "$SOURCES_DIR/libjpeg-turbo/build/libjpeg.62.dylib" "$TARGET_DIR/libjpeg.62.dylib"
+if [ $PROCESS_LIBJPEG -eq 1 ]; then
+  cp "$SOURCES_DIR/libjpeg-turbo/build/libjpeg.62.dylib" "$TARGET_DIR/libjpeg.62.dylib"
+fi
 
+if [ $PROCESS_SANE -eq 1 ]; then
 cp "$SOURCES_DIR/sane-backends/backend/.libs/libsane.1.dylib" "$TARGET_DIR/libsane.1.dylib"
 rm -rf "$TARGET_DIR/sane"
 mkdir "$TARGET_DIR/sane"
@@ -91,6 +112,7 @@ for f in $SOURCES_DIR/sane-backends/backend/.libs/libsane-*.so; do
   [[ $f != *.1.so ]] && continue
   cp "$f" "$TARGET_DIR/sane/"
 done
+fi
 
 cp "$SOURCES_DIR/hplip/.libs/libhpmud.0.dylib" "$TARGET_DIR/"
 cp "$SOURCES_DIR/hplip/.libs/libhpip.0.dylib" "$TARGET_DIR/"

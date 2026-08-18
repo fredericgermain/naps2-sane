@@ -1,0 +1,165 @@
+name: Build macOS artifacts
+
+on:
+  push:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Base version for CI prerelease packages; a tag push v<X.Y.Z> publishes X.Y.Z instead.
+env:
+  BASE_VERSION: 1.1.1
+
+# Cancel running jobs when a new push happens to the same branch as otherwise it will
+# tie up too many resources without providing much value.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            os: macos-15
+          - arch: x64
+            os: macos-15-intel
+
+    runs-on: ${{ matrix.os }}
+    name: mac-${{ matrix.arch }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools
+        run: brew install autoconf autoconf-archive automake libtool pkg-config gettext
+
+      - name: Apply source patches
+        run: ./scripts/apply-patches.sh
+
+      # sane-backends derives its version from 'git describe' (git-version-gen)
+      # at autoreconf time; the shallow submodule clone has no tags, which
+      # turns SANE_DLL_V_MAJOR into the literal UNKNOWN.
+      - name: Fetch sane-backends tags
+        run: |
+          git -C sources/sane-backends fetch --tags --unshallow origin \
+            || git -C sources/sane-backends fetch --tags origin
+
+      - name: Build
+        run: ./scripts/build-mac-${{ matrix.arch }}.sh
+
+      - name: Build config
+        if: matrix.arch == 'arm64'
+        run: ./scripts/build-config.sh
+
+      - name: Check artifacts
+        run: |
+          test -f "artifacts/mac-${{ matrix.arch }}/sane/libsane-hpaio.1.so"
+          test -f "artifacts/mac-${{ matrix.arch }}/libsane.1.dylib"
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            grep -qx hpaio artifacts/config/sane/dll.conf
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-${{ matrix.arch }}
+          path: artifacts/mac-${{ matrix.arch }}
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'arm64'
+        with:
+          name: shared
+          path: |
+            artifacts/config
+            artifacts/data
+            artifacts/*-license*
+            artifacts/*-authors*
+          if-no-files-found: error
+
+  pack:
+    runs-on: macos-15
+    # Wait until we have built everything
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download mac-arm64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-arm64
+          path: artifacts/mac-arm64
+
+      - name: Download mac-x64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-x64
+          path: artifacts/mac-x64
+
+      - name: Download shared artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: shared
+          path: artifacts
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Compute version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${BASE_VERSION}-ci.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Explicit build first: with GeneratePackageOnBuild=true, 'dotnet pack'
+      # alone can skip the build phase and fail with NU5026 on a clean tree.
+      # The same version on both keeps them from producing two nupkgs.
+      # PackageVersion is needed on top of Version because the csproj sets it
+      # explicitly, so it doesn't inherit an overridden Version.
+      # RepositoryUrl must point at this repo for GitHub Packages to link the
+      # package to it, which is what authorizes the GITHUB_TOKEN push.
+      - name: Pack
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dotnet build NAPS2.Sane.Binaries -c Release \
+            -p:Version=$VERSION -p:PackageVersion=$VERSION \
+            -p:RepositoryUrl=https://github.com/${{ github.repository }}
+          dotnet pack NAPS2.Sane.Binaries -c Release \
+            -p:Version=$VERSION -p:PackageVersion=$VERSION \
+            -p:RepositoryUrl=https://github.com/${{ github.repository }}
+
+      - name: Check package
+        run: |
+          pkg="NAPS2.Sane.Binaries/bin/Release/NAPS2.Sane.Binaries.${{ steps.version.outputs.version }}.nupkg"
+          test -f "$pkg"
+          unzip -l "$pkg" | grep -q "contentFiles/_macarm/sane/libsane-hpaio.1.so"
+          unzip -l "$pkg" | grep -q "contentFiles/_mac/sane/libsane-hpaio.1.so"
+          unzip -l "$pkg" | grep -q "contentFiles/_config/sane/dll.conf"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: NAPS2.Sane.Binaries/bin/Release/*.nupkg
+          if-no-files-found: error
+
+      - name: Publish to GitHub Packages
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        run: |
+          dotnet nuget push NAPS2.Sane.Binaries/bin/Release/*.nupkg \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key "${{ secrets.GITHUB_TOKEN }}"
