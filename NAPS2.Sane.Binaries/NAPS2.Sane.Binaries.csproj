@@ -51,11 +51,17 @@
             <PackageCopyToOutput>true</PackageCopyToOutput>
             <PackagePath>contentFiles/_mac/sane</PackagePath>
         </None>
-        <None Include="..\artifacts\dlld.txt">
-            <Link>lib/config/sane/dlld.txt</Link>
+        <None Include="..\artifacts\config\sane\*.conf">
+            <Link>lib/config/sane/*.conf</Link>
             <Pack>true</Pack>
             <PackageCopyToOutput>true</PackageCopyToOutput>
             <PackagePath>contentFiles/_config/sane</PackagePath>
+        </None>
+        <None Include="..\artifacts\data\hplip\*.dat">
+            <Link>lib/data/hplip/*.dat</Link>
+            <Pack>true</Pack>
+            <PackageCopyToOutput>true</PackageCopyToOutput>
+            <PackagePath>contentFiles/_data/hplip</PackagePath>
         </None>
     </ItemGroup>
 

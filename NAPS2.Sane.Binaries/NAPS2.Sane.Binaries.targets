@@ -26,13 +26,18 @@
             <Link>_config/sane/%(Filename).conf</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+        <Content Include="$(MSBuildThisFileDirectory)\..\contentFiles\_data\hplip\*.dat"
+                 Condition="$(RuntimeIdentifier.StartsWith('osx-')) or (!$(TargetFramework.StartsWith('net4')) and $(RuntimeIdentifier) == '')">
+            <Link>_data/hplip/%(Filename).dat</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
         <!--
         SANE expects the presence of the dll.d folder, we don't really need to put anything in it but using an arbitrary
         file is the easiest way to create it.
          -->
-        <Content Include="$(MSBuildThisFileDirectory)\..\contentFiles\_config\sane\dlld.txt"
+        <Content Include="$(MSBuildThisFileDirectory)\..\contentFiles\_config\sane\dll.conf"
                  Condition="$(RuntimeIdentifier.StartsWith('osx-')) or (!$(TargetFramework.StartsWith('net4')) and $(RuntimeIdentifier) == '')">
-            <Link>_config/sane/dll.d/dlld.txt</Link>
+            <Link>_config/sane/dll.d/dll.conf</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>

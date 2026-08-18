@@ -7,3 +7,6 @@
 [submodule "sources/libjpeg-turbo"]
 	path = sources/libjpeg-turbo
 	url = https://github.com/libjpeg-turbo/libjpeg-turbo.git
+[submodule "sources/hplip"]
+	path = sources/hplip
+	url = https://github.com/cyanfish/naps2-hplip.git
